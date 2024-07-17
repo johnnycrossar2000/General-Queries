@@ -1,0 +1,42 @@
+SELECT
+   credit_application_equifax_scores.rnilf04  AS credit_application_equifax_scores_rnilf04,
+    
+COUNT(DISTINCT credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key) AS credit_agreement_overdraft_account_monthly_position_number_of_overdraft_agreements,
+COUNT(DISTINCT CASE WHEN ( CASE WHEN credit_agreement_overdraft_account_monthly_position.worst_number_of_consecutive_days_in_arrears_in_12m >= 90 THEN true ELSE false END ) THEN credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key ELSE NULL END) AS Arrears_90_plus_at_12m,
+COALESCE(SUM(case when credit_agreement_overdraft_account_monthly_position.date = "2024-06-30"  then credit_agreement_overdraft_account_monthly_position.drawn_balance  else 0 end )) AS total_drawn_balance,
+COALESCE(SUM(credit_agreement_overdraft_account_monthly_position.overdraft_limit_contractual ), 0) AS credit_agreement_overdraft_account_monthly_position_total_contractual_od_limit,
+COUNT(DISTINCT case when credit_agreement_overdraft_account_monthly_position.utilisation_ratio >= 0.8 then credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key end ) AS credit_agreement_overdraft_account_monthly_position_count_utilisation_ge_80,
+    AVG(credit_agreement_overdraft_account_monthly_position.total_of_overdraft_interest) AS credit_agreement_overdraft_account_monthly_position_avg_interest_charged,
+COALESCE(SUM(credit_agreement_overdraft_account_monthly_position.total_of_overdraft_interest), 0) AS credit_agreement_overdraft_account_monthly_position_total_interest_charged,
+COALESCE(
+        SUM(
+            CASE
+                WHEN credit_agreement_overdraft_account_monthly_position.worst_number_of_consecutive_days_in_arrears >= 90
+                and credit_agreement_overdraft_account_monthly_position.date = "2024-06-30"
+                THEN credit_agreement_overdraft_account_monthly_position.drawn_balance
+                ELSE 0
+            END
+        ),
+        0
+    ) AS total_Write_off_balance,
+    COUNT(DISTINCT CASE WHEN ( CASE WHEN credit_agreement_overdraft_account_monthly_position.worst_number_of_consecutive_days_in_arrears_in_6m >= 60 THEN true ELSE false END ) THEN credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key ELSE NULL END) AS credit_agreement_overdraft_account_monthly_position_number_of_arrears_60_plus_in_6m
+
+FROM `fact.credit_agreement_overdraft_monthly_position`
+AS credit_agreement_overdraft_account_monthly_position
+LEFT JOIN `dimension.credit_agreement_overdraft`
+AS credit_agreement_overdraft ON credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key = credit_agreement_overdraft.key
+LEFT JOIN `dimension.date` AS date ON credit_agreement_overdraft_account_monthly_position.date = date.date
+LEFT JOIN `dimension.credit_agreement` AS credit_agreement ON credit_agreement_overdraft.key = credit_agreement.key
+
+left join `bridge.credit_application_to_account`as bridge on credit_agreement_overdraft_account_monthly_position.account_key = bridge.account_key
+LEFT JOIN `dimension.credit_application`
+AS credit_application ON credit_application.key = bridge.credit_application_key
+
+LEFT JOIN `fact.credit_application_internal_model_scorecard`  AS credit_application_internal_model_scorecard ON credit_application.key= credit_application_internal_model_scorecard.credit_application_key
+LEFT JOIN `fact.credit_application_equifax_scores`  AS credit_application_equifax_scores ON credit_application.key = credit_application_equifax_scores.credit_application_key
+WHERE  ((( credit_agreement_overdraft.created_at  ) >= TIMESTAMP('2022-07-01 00:00:00'))) AND ((( credit_agreement_overdraft.created_at  ) <= TIMESTAMP('2023-07-01 00:00:00'))) AND  (credit_agreement.type ) = 'OVERDRAFT' AND (credit_agreement.borrower_type ) = 'INDIVIDUAL'
+
+GROUP BY
+    1
+    
+LIMIT 500
