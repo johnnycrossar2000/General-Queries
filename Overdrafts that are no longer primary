@@ -1,0 +1,39 @@
+WITH overdraft_data AS (
+    SELECT
+        credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key,
+        FORMAT_DATE('%Y-%m', date.date) AS date_date_aggregation_month,
+        monthly_account_position.total_of_credit_transactions,
+        LAG(monthly_account_position.total_of_credit_transactions) OVER (PARTITION BY credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key ORDER BY date.date) AS prev_month_total_of_credit_transactions
+    FROM
+        `fact.credit_agreement_overdraft_monthly_position` AS credit_agreement_overdraft_account_monthly_position
+    LEFT JOIN
+        `dimension.credit_agreement_overdraft` AS credit_agreement_overdraft
+        ON credit_agreement_overdraft_account_monthly_position.credit_agreement_overdraft_key = credit_agreement_overdraft.key
+    LEFT JOIN
+        `dimension.date` AS date
+        ON credit_agreement_overdraft_account_monthly_position.date = date.date
+    LEFT JOIN
+        `fact.monthly_account_position` AS monthly_account_position
+        ON monthly_account_position.account_key = credit_agreement_overdraft_account_monthly_position.account_key
+        AND monthly_account_position.date = credit_agreement_overdraft_account_monthly_position.date
+    WHERE
+        credit_agreement_overdraft.created_at IS NOT NULL
+)
+SELECT
+    date_date_aggregation_month,
+    COUNT(DISTINCT credit_agreement_overdraft_key) AS credit_agreement_overdraft_account_monthly_position_number_of_overdraft_agreements,
+    COUNT(DISTINCT CASE
+                    WHEN total_of_credit_transactions > 1000
+                    THEN credit_agreement_overdraft_key
+                  END) AS primary_OD,
+    COUNT(DISTINCT CASE
+                    WHEN total_of_credit_transactions < 500
+                     AND prev_month_total_of_credit_transactions > 1000
+                    THEN credit_agreement_overdraft_key
+                  END) AS no_longer_primary
+FROM
+    overdraft_data
+GROUP BY
+    date_date_aggregation_month
+
+
