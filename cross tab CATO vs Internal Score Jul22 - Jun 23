@@ -36,7 +36,7 @@ LEFT JOIN `fact.credit_application_internal_model_scorecard`  AS credit_applicat
 LEFT JOIN `fact.credit_application_equifax_scores`  AS credit_application_equifax_scores ON credit_application.key = credit_application_equifax_scores.credit_application_key
 LEFT JOIN `fact.monthly_account_position`
      AS monthly_account_position ON monthly_account_position.account_key = credit_agreement_overdraft_account_monthly_position.account_key AND  monthly_account_position.date = credit_agreement_overdraft_account_monthly_position.date
-WHERE  ((( credit_agreement_overdraft.created_at  ) >= TIMESTAMP('2022-07-01 00:00:00'))) AND ((( credit_agreement_overdraft.created_at  ) <= TIMESTAMP('2023-07-01 00:00:00'))) AND  (credit_agreement.type ) = 'OVERDRAFT' AND (credit_agreement.borrower_type ) = 'INDIVIDUAL' AND ((TIMESTAMP_TRUNC(credit_agreement_overdraft.created_at , MONTH))  =  (TIMESTAMP(DATE_TRUNC(date.date , MONTH))))
+WHERE  ((( credit_agreement_overdraft.created_at  ) >= TIMESTAMP('2022-07-01 00:00:00'))) AND ((( credit_agreement_overdraft.created_at  ) <= TIMESTAMP('2023-07-01 00:00:00'))) AND  (credit_agreement.type ) = 'OVERDRAFT' AND (credit_agreement.borrower_type ) = 'INDIVIDUAL' AND ((TIMESTAMP_TRUNC(credit_agreement_overdraft.created_at , MONTH))  =  (TIMESTAMP(DATE_TRUNC(date.date , MONTH)))) and credit_application_internal_model_scorecard.calibrated_score is not null
 
 GROUP BY
     1,2
